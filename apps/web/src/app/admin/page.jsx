@@ -1,360 +1,504 @@
 import { useState, useEffect } from "react";
-import useUser from "@/utils/useUser";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard,
+  BarChart3,
+  Users,
+  Building2,
   MessageSquare,
   Settings,
-  Users,
   FileText,
-  Building2,
-  BarChart3,
-  Mail,
-  Clock,
-  CheckCircle,
-  AlertCircle,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
   LogOut,
-  User,
+  Menu,
+  X,
+  Home,
+  Mail,
+  Phone,
+  Calendar,
+  DollarSign,
+  CheckCircle,
+  Clock,
+  AlertCircle,
 } from "lucide-react";
 
 export default function AdminDashboard() {
-  const { data: user, loading } = useUser();
-  const [dashboardData, setDashboardData] = useState({
-    totalInquiries: 0,
-    newInquiries: 0,
-    resolvedInquiries: 0,
-    totalServices: 0,
-    totalProjects: 0,
-    totalTeamMembers: 0,
-    recentInquiries: [],
-  });
-  const [loadingData, setLoadingData] = useState(true);
+  const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [user, setUser] = useState(null);
+  const queryClient = useQueryClient();
 
   useEffect(() => {
-    if (user) {
-      fetchDashboardData();
-    }
-  }, [user]);
+    // Check authentication
+    const token = localStorage.getItem("adminToken");
+    const userData = localStorage.getItem("adminUser");
 
-  const fetchDashboardData = async () => {
-    try {
-      const response = await fetch("/api/admin/dashboard");
-      if (response.ok) {
-        const data = await response.json();
-        setDashboardData(data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch dashboard data:", error);
-    } finally {
-      setLoadingData(false);
+    if (!token || !userData) {
+      window.location.href = "/admin/login";
+      return;
     }
+
+    setUser(JSON.parse(userData));
+  }, []);
+
+  // Fetch dashboard data
+  const { data: dashboardData, isLoading } = useQuery({
+    queryKey: ["dashboard"],
+    queryFn: async () => {
+      const token = localStorage.getItem("adminToken");
+
+      const [services, projects, team, contacts, company] = await Promise.all([
+        fetch("/api/services").then((res) => res.json()),
+        fetch("/api/projects").then((res) => res.json()),
+        fetch("/api/team").then((res) => res.json()),
+        fetch("/api/contact").then((res) => res.json()),
+        fetch("/api/company").then((res) => res.json()),
+      ]);
+
+      return {
+        services: services.data || [],
+        projects: projects.data || [],
+        team: team.data || [],
+        contacts: contacts.data || [],
+        company: company.data || {},
+      };
+    },
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem("adminToken");
+    localStorage.removeItem("adminUser");
+    window.location.href = "/admin/login";
   };
 
-  // Redirect to login if not authenticated
-  if (loading) {
+  const menuItems = [
+    { id: "dashboard", label: "Dashboard", icon: BarChart3 },
+    { id: "services", label: "Services", icon: Building2 },
+    { id: "projects", label: "Projects", icon: FileText },
+    { id: "team", label: "Team", icon: Users },
+    { id: "contacts", label: "Contact Inquiries", icon: MessageSquare },
+    { id: "company", label: "Company Info", icon: Settings },
+  ];
+
+  if (isLoading || !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
+        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (!user) {
-    if (typeof window !== "undefined") {
-      window.location.href = "/account/signin";
-    }
-    return null;
-  }
-
-  // Check if user is admin (you may want to create a separate API to check role)
-  // For now, we'll assume authenticated users are admins
-
-  const menuItems = [
-    {
-      name: "Dashboard",
-      icon: LayoutDashboard,
-      href: "/admin",
-      current: true,
-    },
-    {
-      name: "Contact Inquiries",
-      icon: MessageSquare,
-      href: "/admin/inquiries",
-      current: false,
-    },
-    {
-      name: "Services",
-      icon: Settings,
-      href: "/admin/services",
-      current: false,
-    },
-    {
-      name: "Projects",
-      icon: FileText,
-      href: "/admin/projects",
-      current: false,
-    },
-    {
-      name: "Team Members",
-      icon: Users,
-      href: "/admin/team",
-      current: false,
-    },
-    {
-      name: "Company Info",
-      icon: Building2,
-      href: "/admin/company",
-      current: false,
-    },
-  ];
-
-  const stats = [
-    {
-      name: "Total Inquiries",
-      value: dashboardData.totalInquiries,
-      icon: MessageSquare,
-      color: "bg-blue-500",
-    },
-    {
-      name: "New Inquiries",
-      value: dashboardData.newInquiries,
-      icon: Mail,
-      color: "bg-yellow-500",
-    },
-    {
-      name: "Resolved",
-      value: dashboardData.resolvedInquiries,
-      icon: CheckCircle,
-      color: "bg-green-500",
-    },
-    {
-      name: "Services",
-      value: dashboardData.totalServices,
-      icon: Settings,
-      color: "bg-purple-500",
-    },
-    {
-      name: "Projects",
-      value: dashboardData.totalProjects,
-      icon: FileText,
-      color: "bg-indigo-500",
-    },
-    {
-      name: "Team Members",
-      value: dashboardData.totalTeamMembers,
-      icon: Users,
-      color: "bg-green-500",
-    },
-  ];
+  const data = dashboardData || {
+    services: [],
+    projects: [],
+    team: [],
+    contacts: [],
+    company: {},
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {/* Mobile Sidebar Backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <div className="w-64 bg-white shadow-lg">
-        <div className="p-6">
-          <div className="flex items-center space-x-2">
-            <Building2 className="h-8 w-8 text-blue-600" />
-            <div>
-              <h1 className="text-xl font-bold text-gray-900">MASS Tech</h1>
-              <p className="text-sm text-gray-500">Admin Panel</p>
-            </div>
-          </div>
-        </div>
-
-        <nav className="mt-6">
-          {menuItems.map((item) => (
-            <a
-              key={item.name}
-              href={item.href}
-              className={`flex items-center px-6 py-3 text-sm font-medium ${
-                item.current
-                  ? "bg-blue-50 text-blue-700 border-r-2 border-blue-700"
-                  : "text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.name}
-            </a>
-          ))}
-        </nav>
-
-        {/* User Info */}
-        <div className="absolute bottom-0 left-0 w-64 p-6 bg-gray-50">
-          <div className="flex items-center space-x-3">
-            <div className="flex-shrink-0">
-              <div className="h-10 w-10 bg-blue-600 rounded-full flex items-center justify-center">
-                <User className="h-5 w-5 text-white" />
+      <div
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform ${
+          sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } transition-transform duration-200 ease-in-out`}
+      >
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+            <div className="flex items-center space-x-3">
+              <div className="w-10 h-10 bg-gradient-to-br from-[#006DFF] to-[#2F7BFF] rounded-xl flex items-center justify-center">
+                <Building2 size={20} className="text-white" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">Admin Panel</h1>
+                <p className="text-sm text-gray-500">MASS Tech Ltd</p>
               </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-gray-900 truncate">
-                {user.name || user.email}
-              </p>
-              <p className="text-xs text-gray-500">Administrator</p>
-            </div>
-            <a
-              href="/account/logout"
-              className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+            <button
+              onClick={() => setSidebarOpen(false)}
+              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
             >
-              <LogOut className="h-5 w-5" />
-            </a>
+              <X size={20} />
+            </button>
+          </div>
+
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            {menuItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-left transition-colors ${
+                    isActive
+                      ? "bg-gradient-to-r from-[#006DFF] to-[#2F7BFF] text-white"
+                      : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Icon size={20} />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* User Info & Logout */}
+          <div className="p-4 border-t border-gray-200">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                <Users size={20} className="text-gray-600" />
+              </div>
+              <div>
+                <p className="font-medium text-gray-900">
+                  {user.name || "Admin"}
+                </p>
+                <p className="text-sm text-gray-500">{user.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="w-full flex items-center space-x-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              <LogOut size={16} />
+              <span>Logout</span>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Main content */}
-      <div className="flex-1 overflow-hidden">
-        <div className="p-8">
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-            <p className="text-gray-600">
-              Welcome back, {user.name || user.email}
-            </p>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-6 mb-8">
-            {stats.map((stat) => (
-              <div
-                key={stat.name}
-                className="bg-white rounded-lg shadow p-6 border border-gray-200"
+      {/* Main Content */}
+      <div className="flex-1 lg:ml-0">
+        {/* Top Bar */}
+        <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
               >
-                <div className="flex items-center">
-                  <div
-                    className={`p-3 rounded-lg ${stat.color} bg-opacity-10 mr-4`}
-                  >
-                    <stat.icon
-                      className={`h-6 w-6 ${stat.color.replace(
-                        "bg-",
-                        "text-",
-                      )}`}
-                    />
+                <Menu size={20} />
+              </button>
+              <h2 className="text-2xl font-bold text-gray-900 capitalize">
+                {activeTab}
+              </h2>
+            </div>
+            <div className="flex items-center space-x-4">
+              <a
+                href="/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center space-x-2 px-4 py-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100 transition-colors"
+              >
+                <Home size={16} />
+                <span>View Website</span>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div className="p-6">
+          {/* Dashboard Overview */}
+          {activeTab === "dashboard" && (
+            <div className="space-y-6">
+              {/* Stats Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">
+                        Total Services
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {data.services.length}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                      <Building2 size={24} className="text-blue-600" />
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-2xl font-bold text-gray-900">
-                      {loadingData ? "..." : stat.value}
-                    </p>
-                    <p className="text-sm text-gray-600">{stat.name}</p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">
+                        Total Projects
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {data.projects.length}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                      <FileText size={24} className="text-green-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">Team Members</p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {data.team.length}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                      <Users size={24} className="text-purple-600" />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-500 mb-1">
+                        New Inquiries
+                      </p>
+                      <p className="text-3xl font-bold text-gray-900">
+                        {data.contacts.filter((c) => c.status === "new").length}
+                      </p>
+                    </div>
+                    <div className="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+                      <MessageSquare size={24} className="text-orange-600" />
+                    </div>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Recent Inquiries */}
-          <div className="bg-white rounded-lg shadow border border-gray-200">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900">
-                Recent Contact Inquiries
-              </h2>
-              <p className="text-gray-600">
-                Latest inquiries from your website
-              </p>
-            </div>
-            <div className="p-6">
-              {loadingData ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-                  <p className="mt-2 text-gray-600">Loading inquiries...</p>
-                </div>
-              ) : dashboardData.recentInquiries.length > 0 ? (
-                <div className="space-y-4">
-                  {dashboardData.recentInquiries.map((inquiry) => (
-                    <div
-                      key={inquiry.id}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+              {/* Recent Activity */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Recent Contact Inquiries */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Recent Inquiries
+                    </h3>
+                    <button
+                      onClick={() => setActiveTab("contacts")}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                     >
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-2">
-                          <h3 className="font-medium text-gray-900">
-                            {inquiry.first_name} {inquiry.last_name}
-                          </h3>
-                          <span
-                            className={`px-2 py-1 text-xs rounded-full ${
-                              inquiry.status === "new"
-                                ? "bg-yellow-100 text-yellow-800"
-                                : inquiry.status === "in_progress"
-                                  ? "bg-blue-100 text-blue-800"
-                                  : inquiry.status === "resolved"
-                                    ? "bg-green-100 text-green-800"
-                                    : "bg-gray-100 text-gray-800"
-                            }`}
-                          >
-                            {inquiry.status.replace("_", " ")}
-                          </span>
+                      View All
+                    </button>
+                  </div>
+                  <div className="space-y-4">
+                    {data.contacts.slice(0, 5).map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                      >
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {contact.name}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {contact.email}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-1">
+                            {new Date(contact.created_at).toLocaleDateString()}
+                          </p>
                         </div>
-                        <p className="text-sm text-gray-600">{inquiry.email}</p>
-                        <p className="text-sm text-gray-700 truncate">
-                          {inquiry.message}
-                        </p>
-                      </div>
-                      <div className="flex items-center space-x-2 text-sm text-gray-500">
-                        <Clock className="h-4 w-4" />
-                        <span>
-                          {new Date(inquiry.created_at).toLocaleDateString()}
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            contact.status === "new"
+                              ? "bg-red-100 text-red-800"
+                              : contact.status === "contacted"
+                                ? "bg-yellow-100 text-yellow-800"
+                                : contact.status === "responded"
+                                  ? "bg-blue-100 text-blue-800"
+                                  : "bg-green-100 text-green-800"
+                          }`}
+                        >
+                          {contact.status}
                         </span>
                       </div>
-                    </div>
-                  ))}
-                  <div className="text-center pt-4">
-                    <a
-                      href="/admin/inquiries"
-                      className="text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      View All Inquiries →
-                    </a>
+                    ))}
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8 text-gray-500">
-                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-300" />
-                  <p>No contact inquiries yet</p>
+
+                {/* Quick Actions */}
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                    Quick Actions
+                  </h3>
+                  <div className="space-y-3">
+                    <button
+                      onClick={() => setActiveTab("services")}
+                      className="w-full flex items-center space-x-3 p-4 bg-blue-50 hover:bg-blue-100 rounded-xl transition-colors"
+                    >
+                      <Plus size={20} className="text-blue-600" />
+                      <span className="text-blue-600 font-medium">
+                        Add New Service
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("projects")}
+                      className="w-full flex items-center space-x-3 p-4 bg-green-50 hover:bg-green-100 rounded-xl transition-colors"
+                    >
+                      <Plus size={20} className="text-green-600" />
+                      <span className="text-green-600 font-medium">
+                        Add New Project
+                      </span>
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("team")}
+                      className="w-full flex items-center space-x-3 p-4 bg-purple-50 hover:bg-purple-100 rounded-xl transition-colors"
+                    >
+                      <Plus size={20} className="text-purple-600" />
+                      <span className="text-purple-600 font-medium">
+                        Add Team Member
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
-          {/* Quick Actions */}
-          <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <a
-              href="/admin/inquiries"
-              className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-md transition-shadow"
-            >
-              <MessageSquare className="h-8 w-8 text-blue-600 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Manage Inquiries
-              </h3>
-              <p className="text-gray-600">
-                Review and respond to contact inquiries
-              </p>
-            </a>
+          {/* Other tabs content will be rendered based on activeTab */}
+          {activeTab === "services" && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Services Management
+                </h3>
+                <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors">
+                  <Plus size={16} />
+                  <span>Add Service</span>
+                </button>
+              </div>
+              <div className="text-center py-8 text-gray-500">
+                Services management interface will be implemented here.
+              </div>
+            </div>
+          )}
 
-            <a
-              href="/admin/services"
-              className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-md transition-shadow"
-            >
-              <Settings className="h-8 w-8 text-blue-600 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Edit Services
-              </h3>
-              <p className="text-gray-600">
-                Add, edit, or remove your services
-              </p>
-            </a>
+          {activeTab === "projects" && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Projects Management
+                </h3>
+                <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors">
+                  <Plus size={16} />
+                  <span>Add Project</span>
+                </button>
+              </div>
+              <div className="text-center py-8 text-gray-500">
+                Projects management interface will be implemented here.
+              </div>
+            </div>
+          )}
 
-            <a
-              href="/admin/projects"
-              className="bg-white p-6 rounded-lg shadow border border-gray-200 hover:shadow-md transition-shadow"
-            >
-              <FileText className="h-8 w-8 text-blue-600 mb-3" />
-              <h3 className="text-lg font-semibold text-gray-900">
-                Manage Projects
+          {activeTab === "team" && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-gray-900">
+                  Team Management
+                </h3>
+                <button className="flex items-center space-x-2 bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors">
+                  <Plus size={16} />
+                  <span>Add Team Member</span>
+                </button>
+              </div>
+              <div className="text-center py-8 text-gray-500">
+                Team management interface will be implemented here.
+              </div>
+            </div>
+          )}
+
+          {activeTab === "contacts" && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                Contact Inquiries
               </h3>
-              <p className="text-gray-600">Showcase your completed projects</p>
-            </a>
-          </div>
+              <div className="space-y-4">
+                {data.contacts.map((contact) => (
+                  <div
+                    key={contact.id}
+                    className="p-4 border border-gray-200 rounded-xl"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-4 mb-2">
+                          <h4 className="font-semibold text-gray-900">
+                            {contact.name}
+                          </h4>
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${
+                              contact.status === "new"
+                                ? "bg-red-100 text-red-800"
+                                : contact.status === "contacted"
+                                  ? "bg-yellow-100 text-yellow-800"
+                                  : contact.status === "responded"
+                                    ? "bg-blue-100 text-blue-800"
+                                    : "bg-green-100 text-green-800"
+                            }`}
+                          >
+                            {contact.status}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600 mb-3">
+                          <div className="flex items-center space-x-2">
+                            <Mail size={14} />
+                            <span>{contact.email}</span>
+                          </div>
+                          {contact.phone && (
+                            <div className="flex items-center space-x-2">
+                              <Phone size={14} />
+                              <span>{contact.phone}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-2">
+                            <Calendar size={14} />
+                            <span>
+                              {new Date(
+                                contact.created_at,
+                              ).toLocaleDateString()}
+                            </span>
+                          </div>
+                        </div>
+                        <p className="text-gray-700 mb-2">
+                          <strong>Subject:</strong> {contact.subject}
+                        </p>
+                        <p className="text-gray-700">{contact.message}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "company" && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+              <h3 className="text-lg font-semibold text-gray-900 mb-6">
+                Company Information
+              </h3>
+              <div className="text-center py-8 text-gray-500">
+                Company information management interface will be implemented
+                here.
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

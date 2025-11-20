@@ -1,557 +1,388 @@
-import { Building2, MapPin, Calendar, ArrowRight, Filter } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  ArrowRight,
+  Building2,
+  Home as HomeIcon,
+  Factory,
+  CheckCircle,
+  Calendar,
+  MapPin,
+  DollarSign,
+  Users,
+  Filter,
+} from "lucide-react";
+import Header from "../../components/Header";
+import Footer from "../../components/Footer";
 
 export default function ProjectsPage() {
-  const [projects, setProjects] = useState([]);
-  const [company, setCompany] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [selectedCategory, setSelectedCategory] = useState("all");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
-    try {
-      const [projectsResponse, companyResponse] = await Promise.all([
-        fetch("/api/public/projects"),
-        fetch("/api/public/company"),
-      ]);
-
-      if (!projectsResponse.ok) {
-        throw new Error(`Projects API error: ${projectsResponse.status}`);
-      }
-      if (!companyResponse.ok) {
-        throw new Error(`Company API error: ${companyResponse.status}`);
-      }
-
-      const projectsData = await projectsResponse.json();
-      const companyData = await companyResponse.json();
-
-      setProjects(projectsData);
-      setCompany(companyData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
-      setError("Failed to load content");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const defaultProjects = [
-    {
-      id: "modern-residential-complex",
-      title: "Modern Residential Complex",
-      category: "Residential",
-      location: "Kigali, Rwanda",
-      year: "2024",
-      description:
-        "A state-of-the-art residential complex featuring 50 modern apartments with sustainable design elements and community amenities.",
-      image:
-        "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      features: [
-        "50 Apartments",
-        "Community Center",
-        "Green Spaces",
-        "Solar Power",
-      ],
+  // Fetch projects
+  const { data: projectsData, isLoading } = useQuery({
+    queryKey: ["projects", selectedCategory],
+    queryFn: async () => {
+      const url =
+        selectedCategory === "all"
+          ? "/api/projects"
+          : `/api/projects?category=${selectedCategory}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Failed to fetch projects");
+      return response.json();
     },
-    {
-      id: "corporate-office-building",
-      title: "Corporate Office Building",
-      category: "Commercial",
-      location: "Kigali, Rwanda",
-      year: "2023",
-      description:
-        "A 12-story office building designed for maximum efficiency and employee comfort, featuring modern amenities and smart building technology.",
-      image:
-        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      features: [
-        "12 Floors",
-        "Smart Building",
-        "Conference Centers",
-        "Parking Garage",
-      ],
-    },
-    {
-      id: "industrial-warehouse",
-      title: "Industrial Warehouse",
-      category: "Industrial",
-      location: "Kigali, Rwanda",
-      year: "2023",
-      description:
-        "Large-scale warehouse facility optimized for logistics and distribution, with advanced security and climate control systems.",
-      image:
-        "https://images.unsplash.com/photo-1581094794329-c8112a89af12?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      features: [
-        "50,000 sqft",
-        "Climate Control",
-        "Loading Docks",
-        "Security Systems",
-      ],
-    },
+  });
+
+  const projects = projectsData?.data || [];
+
+  const categories = [
+    { id: "all", name: "All Projects", icon: Building2 },
+    { id: "residential", name: "Residential", icon: HomeIcon },
+    { id: "commercial", name: "Commercial", icon: Building2 },
+    { id: "industrial", name: "Industrial", icon: Factory },
   ];
 
-  const companyName = company?.company_name || "MASS Tech Ltd";
-
-  // Get unique categories from projects
-  const getCategories = () => {
-    const categories = ["All"];
-    const uniqueTypes = [
-      ...new Set(projects.map((p) => p.project_type).filter(Boolean)),
-    ];
-    return categories.concat(uniqueTypes);
-  };
-
-  const categories = loading
-    ? ["All", "Residential", "Commercial", "Industrial"]
-    : getCategories();
-
-  // Filter projects by category
-  const filteredProjects =
-    selectedCategory === "All"
-      ? projects
-      : projects.filter((project) => project.project_type === selectedCategory);
-
-  const displayProjects = loading
-    ? defaultProjects
-    : filteredProjects.length > 0
-      ? filteredProjects
-      : defaultProjects;
-
-  const formatDate = (dateString) => {
-    if (!dateString) return "";
-    return new Date(dateString).getFullYear().toString();
-  };
-
-  const getMainImage = (project) => {
-    if (project.image_urls && project.image_urls.length > 0) {
-      return project.image_urls[0];
-    }
-    // Fallback images
-    const fallbackImages = [
-      "https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-      "https://images.unsplash.com/photo-1581094794329-c8112a89af12?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80",
-    ];
-    return (
-      project.image ||
-      fallbackImages[Math.floor(Math.random() * fallbackImages.length)]
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-white">
-        {/* Header */}
-        <header className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <a href="/" className="flex items-center space-x-2">
-                <Building2 className="h-8 w-8 text-blue-600" />
-                <span className="text-2xl font-bold text-gray-900">
-                  {companyName}
-                </span>
-              </a>
-              <nav className="hidden md:flex space-x-8">
-                <a
-                  href="/"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Home
-                </a>
-                <a
-                  href="/services"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Services
-                </a>
-                <a href="/projects" className="text-blue-600 font-semibold">
-                  Projects
-                </a>
-                <a
-                  href="/about"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  About
-                </a>
-                <a
-                  href="/contact"
-                  className="text-gray-700 hover:text-blue-600 transition-colors"
-                >
-                  Contact
-                </a>
-              </nav>
-              <a
-                href="/contact"
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Get Quote
-              </a>
-            </div>
-          </div>
-        </header>
-
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading projects...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-4">
-            <a href="/" className="flex items-center space-x-2">
-              <Building2 className="h-8 w-8 text-blue-600" />
-              <span className="text-2xl font-bold text-gray-900">
-                {companyName}
-              </span>
-            </a>
-            <nav className="hidden md:flex space-x-8">
-              <a
-                href="/"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                Home
-              </a>
-              <a
-                href="/services"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                Services
-              </a>
-              <a href="/projects" className="text-blue-600 font-semibold">
-                Projects
-              </a>
-              <a
-                href="/about"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                About
-              </a>
-              <a
-                href="/contact"
-                className="text-gray-700 hover:text-blue-600 transition-colors"
-              >
-                Contact
-              </a>
-            </nav>
-            <a
-              href="/contact"
-              className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Get Quote
-            </a>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-white dark:bg-[#121212]">
+      <Header />
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-r from-blue-900 to-blue-700 text-white py-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h1 className="text-4xl md:text-5xl font-bold mb-6">Our Projects</h1>
-          <p className="text-xl max-w-3xl mx-auto">
-            Explore our portfolio of successful construction and design projects
-            across residential, commercial, and industrial sectors
+      <section className="w-full bg-gradient-to-r from-[#006DFF] to-[#2F7BFF] py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-white">
+          <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold leading-tight mb-6">
+            Our <span className="text-blue-200">Projects</span>
+          </h1>
+
+          <p className="text-lg md:text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed mb-8">
+            Explore our portfolio of successful construction projects across
+            residential, commercial, and industrial sectors in Rwanda.
           </p>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a
+              href="/contact"
+              className="inline-flex items-center space-x-2 bg-white text-[#006DFF] font-semibold text-base px-8 py-4 rounded-full hover:bg-gray-50 active:scale-95 transition-all duration-150"
+            >
+              <span>Start Your Project</span>
+              <ArrowRight size={18} />
+            </a>
+            <a
+              href="/services"
+              className="inline-flex items-center space-x-2 bg-white bg-opacity-10 backdrop-blur-sm border border-white border-opacity-30 text-white font-semibold text-base px-8 py-4 rounded-full hover:bg-opacity-20 active:scale-95 transition-all duration-150"
+            >
+              <span>Our Services</span>
+              <ArrowRight size={18} />
+            </a>
+          </div>
         </div>
       </section>
 
-      {/* Error State */}
-      {error && (
-        <section className="py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-red-600 mb-4">{error}</p>
-            <button
-              onClick={fetchData}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              Try Again
-            </button>
-          </div>
-        </section>
-      )}
+      {/* Project Categories Filter */}
+      <section className="w-full bg-white dark:bg-[#121212] py-8 md:py-12 border-b border-gray-100 dark:border-gray-800">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-wrap gap-4 justify-center">
+            {categories.map((category) => {
+              const IconComponent = category.icon;
+              const isActive = selectedCategory === category.id;
 
-      {/* Filter Section */}
-      {!error && (
-        <section className="py-12 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-wrap justify-center gap-4">
-              {categories.map((category) => (
+              return (
                 <button
-                  key={category}
-                  onClick={() => setSelectedCategory(category)}
-                  className={`px-6 py-2 rounded-full border border-gray-300 transition-colors ${
-                    selectedCategory === category
-                      ? "bg-blue-600 text-white border-blue-600"
-                      : "bg-white text-gray-700 hover:bg-blue-600 hover:text-white"
+                  key={category.id}
+                  onClick={() => setSelectedCategory(category.id)}
+                  className={`inline-flex items-center space-x-2 px-6 py-3 rounded-full font-medium transition-all duration-200 ${
+                    isActive
+                      ? "bg-[#006DFF] text-white shadow-lg"
+                      : "bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700"
                   }`}
                 >
-                  {category}
+                  <IconComponent size={18} />
+                  <span>{category.name}</span>
                 </button>
-              ))}
-            </div>
-            {!loading &&
-              filteredProjects.length > 0 &&
-              selectedCategory !== "All" && (
-                <div className="text-center mt-4 text-gray-600">
-                  Showing {filteredProjects.length}{" "}
-                  {selectedCategory.toLowerCase()} project
-                  {filteredProjects.length !== 1 ? "s" : ""}
-                </div>
-              )}
+              );
+            })}
           </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* Projects Grid */}
-      {!error && (
-        <section className="py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            {displayProjects.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {displayProjects.map((project, index) => (
-                  <div
-                    key={project.id || index}
-                    className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-xl transition-shadow"
-                  >
-                    <div className="relative">
-                      <img
-                        src={getMainImage(project)}
-                        alt={project.name || project.title}
-                        className="w-full h-64 object-cover"
-                      />
-                      <div className="absolute top-4 left-4">
-                        <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm font-medium">
-                          {project.project_type || project.category}
-                        </span>
-                      </div>
-                      {project.is_featured && (
-                        <div className="absolute top-4 right-4">
-                          <span className="bg-yellow-500 text-white px-3 py-1 rounded-full text-sm font-medium">
-                            Featured
+      <section className="w-full bg-[#F8FAFC] dark:bg-[#1A1A1A] py-16 md:py-24">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          {isLoading ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {[...Array(6)].map((_, index) => (
+                <div
+                  key={index}
+                  className="bg-white dark:bg-[#1E1E1E] rounded-3xl overflow-hidden animate-pulse"
+                >
+                  <div className="h-64 bg-gray-200 dark:bg-gray-700"></div>
+                  <div className="p-6">
+                    <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-6"></div>
+                    <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-24"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : projects.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-gray-500 dark:text-gray-400 text-lg mb-4">
+                No projects found for the selected category.
+              </div>
+              <button
+                onClick={() => setSelectedCategory("all")}
+                className="text-[#006DFF] font-medium hover:underline"
+              >
+                View all projects
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {projects.map((project) => (
+                <div
+                  key={project.id}
+                  className="bg-white dark:bg-[#1E1E1E] border border-[#E5E7EB] dark:border-[#333333] rounded-3xl overflow-hidden hover:shadow-lg dark:hover:shadow-lg dark:hover:shadow-black/20 hover:-translate-y-1 transition-all duration-200 group cursor-pointer"
+                  onClick={() =>
+                    (window.location.href = `/projects/${project.id}`)
+                  }
+                >
+                  {/* Project Image */}
+                  <div className="relative h-64 overflow-hidden">
+                    <img
+                      src={
+                        project.images?.[0] ||
+                        "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&w=800&q=80"
+                      }
+                      alt={project.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    <div className="absolute top-4 left-4">
+                      <span className="bg-[#006DFF] text-white text-xs font-semibold px-3 py-1 rounded-full capitalize">
+                        {project.category}
+                      </span>
+                    </div>
+                    <div className="absolute top-4 right-4">
+                      <span
+                        className={`text-white text-xs font-semibold px-3 py-1 rounded-full ${
+                          project.status === "completed"
+                            ? "bg-green-500"
+                            : project.status === "in_progress"
+                              ? "bg-orange-500"
+                              : "bg-gray-500"
+                        }`}
+                      >
+                        {project.status === "in_progress"
+                          ? "In Progress"
+                          : project.status === "completed"
+                            ? "Completed"
+                            : project.status}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Project Content */}
+                  <div className="p-6">
+                    {/* Project Title */}
+                    <h3 className="text-xl font-bold text-[#111] dark:text-white mb-3">
+                      {project.title}
+                    </h3>
+
+                    {/* Project Description */}
+                    <p className="text-[#6B7280] dark:text-[#A3A3A3] leading-relaxed mb-4 line-clamp-2">
+                      {project.short_description || project.description}
+                    </p>
+
+                    {/* Project Details */}
+                    <div className="space-y-2 mb-6">
+                      {project.location && (
+                        <div className="flex items-center space-x-2 text-sm">
+                          <MapPin
+                            size={16}
+                            className="text-[#006DFF] flex-shrink-0"
+                          />
+                          <span className="text-[#6B7280] dark:text-[#A3A3A3]">
+                            {project.location}
+                          </span>
+                        </div>
+                      )}
+                      {project.client && (
+                        <div className="flex items-center space-x-2 text-sm">
+                          <Users
+                            size={16}
+                            className="text-[#006DFF] flex-shrink-0"
+                          />
+                          <span className="text-[#6B7280] dark:text-[#A3A3A3]">
+                            {project.client}
+                          </span>
+                        </div>
+                      )}
+                      {project.project_value && (
+                        <div className="flex items-center space-x-2 text-sm">
+                          <DollarSign
+                            size={16}
+                            className="text-[#006DFF] flex-shrink-0"
+                          />
+                          <span className="text-[#6B7280] dark:text-[#A3A3A3]">
+                            {project.project_value}
+                          </span>
+                        </div>
+                      )}
+                      {project.completion_date && (
+                        <div className="flex items-center space-x-2 text-sm">
+                          <Calendar
+                            size={16}
+                            className="text-[#006DFF] flex-shrink-0"
+                          />
+                          <span className="text-[#6B7280] dark:text-[#A3A3A3]">
+                            {new Date(
+                              project.completion_date,
+                            ).toLocaleDateString()}
                           </span>
                         </div>
                       )}
                     </div>
-                    <div className="p-6">
-                      <h3 className="text-xl font-bold text-gray-900 mb-3">
-                        {project.name || project.title}
-                      </h3>
-                      <p className="text-gray-600 mb-4 line-clamp-3">
-                        {project.short_description || project.description}
-                      </p>
 
-                      <div className="flex items-center text-sm text-gray-500 mb-4">
-                        <MapPin className="h-4 w-4 mr-2" />
-                        <span className="mr-4">{project.location}</span>
-                        {(project.completion_date || project.year) && (
-                          <>
-                            <Calendar className="h-4 w-4 mr-2" />
-                            <span>
-                              {formatDate(project.completion_date) ||
-                                project.year}
-                            </span>
-                          </>
-                        )}
-                      </div>
-
-                      {project.features && project.features.length > 0 && (
-                        <div className="grid grid-cols-2 gap-2 mb-4">
+                    {/* Key Features */}
+                    {project.features && project.features.length > 0 && (
+                      <div className="mb-6">
+                        <h4 className="text-sm font-medium text-[#111] dark:text-white mb-3">
+                          Key Features:
+                        </h4>
+                        <div className="space-y-2">
                           {project.features
-                            .slice(0, 4)
-                            .map((feature, featureIndex) => (
+                            .slice(0, 3)
+                            .map((feature, index) => (
                               <div
-                                key={featureIndex}
-                                className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded"
+                                key={index}
+                                className="flex items-center space-x-2"
                               >
-                                {feature}
+                                <CheckCircle
+                                  size={14}
+                                  className="text-[#006DFF] flex-shrink-0"
+                                />
+                                <span className="text-sm text-[#6B7280] dark:text-[#A3A3A3]">
+                                  {feature}
+                                </span>
                               </div>
                             ))}
                         </div>
-                      )}
+                      </div>
+                    )}
 
-                      {project.budget_range && (
-                        <div className="mb-4 p-3 bg-green-50 rounded-lg">
-                          <span className="text-green-800 font-medium text-sm">
-                            Budget:{" "}
-                          </span>
-                          <span className="text-green-600 font-semibold text-sm">
-                            {project.budget_range}
-                          </span>
-                        </div>
-                      )}
-
-                      <a
-                        href={`/projects/${project.id}`}
-                        className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center"
-                      >
-                        View Details
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </a>
-                    </div>
+                    {/* View Details Link */}
+                    <a
+                      href={`/projects/${project.id}`}
+                      className="inline-flex items-center space-x-2 text-[#006DFF] font-medium hover:text-[#0056d6] transition-colors group"
+                    >
+                      <span>View Details</span>
+                      <ArrowRight
+                        size={16}
+                        className="group-hover:translate-x-1 transition-transform"
+                      />
+                    </a>
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500">
-                <Building2 className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <p className="text-xl font-medium">
-                  {selectedCategory === "All"
-                    ? "No projects available yet"
-                    : `No ${selectedCategory.toLowerCase()} projects found`}
-                </p>
-                <p className="text-sm">
-                  Projects added in the admin panel will appear here
-                </p>
-                {selectedCategory !== "All" && (
-                  <button
-                    onClick={() => setSelectedCategory("All")}
-                    className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
-                  >
-                    View all projects
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
-        </section>
-      )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-blue-900 text-white">
+      {/* Statistics Section */}
+      <section className="w-full bg-white dark:bg-[#121212] py-16 md:py-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Our Achievements
+          <div className="text-center mb-12 md:mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-[#111] dark:text-white mb-6">
+              Our Project Success
             </h2>
-            <p className="text-xl text-blue-100">
-              Numbers that showcase our commitment to excellence
+            <p className="text-lg text-[#6B7280] dark:text-[#A3A3A3] max-w-2xl mx-auto">
+              Numbers speak louder than words. Here's what we've achieved in the
+              construction industry.
             </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-            <div>
-              <div className="text-4xl md:text-5xl font-bold mb-2">
-                {projects.length || 150}+
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#006DFF] to-[#2F7BFF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Building2 size={28} className="text-white" />
               </div>
-              <div className="text-blue-200">Projects Completed</div>
+              <div className="text-3xl font-bold text-[#111] dark:text-white mb-2">
+                {projects.filter((p) => p.status === "completed").length}+
+              </div>
+              <div className="text-sm text-[#6B7280] dark:text-[#A3A3A3]">
+                Completed Projects
+              </div>
             </div>
-            <div>
-              <div className="text-4xl md:text-5xl font-bold mb-2">10+</div>
-              <div className="text-blue-200">Years Experience</div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#006DFF] to-[#2F7BFF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Users size={28} className="text-white" />
+              </div>
+              <div className="text-3xl font-bold text-[#111] dark:text-white mb-2">
+                120+
+              </div>
+              <div className="text-sm text-[#6B7280] dark:text-[#A3A3A3]">
+                Happy Clients
+              </div>
             </div>
-            <div>
-              <div className="text-4xl md:text-5xl font-bold mb-2">500+</div>
-              <div className="text-blue-200">Happy Clients</div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#006DFF] to-[#2F7BFF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Calendar size={28} className="text-white" />
+              </div>
+              <div className="text-3xl font-bold text-[#111] dark:text-white mb-2">
+                10+
+              </div>
+              <div className="text-sm text-[#6B7280] dark:text-[#A3A3A3]">
+                Years Experience
+              </div>
             </div>
-            <div>
-              <div className="text-4xl md:text-5xl font-bold mb-2">50+</div>
-              <div className="text-blue-200">Team Members</div>
+
+            <div className="text-center">
+              <div className="w-16 h-16 bg-gradient-to-br from-[#006DFF] to-[#2F7BFF] rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <CheckCircle size={28} className="text-white" />
+              </div>
+              <div className="text-3xl font-bold text-[#111] dark:text-white mb-2">
+                100%
+              </div>
+              <div className="text-sm text-[#6B7280] dark:text-[#A3A3A3]">
+                Quality Guaranteed
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Ready for Your Project?
+      <section className="w-full bg-gradient-to-r from-[#006DFF] to-[#2F7BFF] py-16 md:py-20">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Ready to Start Your Dream Project?
           </h2>
-          <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Join our growing list of satisfied clients. Let's bring your vision
-            to life.
+          <p className="text-lg text-blue-100 mb-8">
+            Let us bring your vision to life with our expertise and commitment
+            to excellence in construction and design.
           </p>
+
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a
               href="/contact"
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+              className="inline-flex items-center space-x-2 bg-white text-[#006DFF] font-semibold text-base px-8 py-4 rounded-full hover:bg-gray-50 active:scale-95 transition-all duration-150"
             >
-              Start Your Project
+              <span>Get Free Consultation</span>
+              <ArrowRight size={18} />
             </a>
             <a
               href="/services"
-              className="border-2 border-blue-600 text-blue-600 px-8 py-3 rounded-lg font-semibold hover:bg-blue-600 hover:text-white transition-colors"
+              className="inline-flex items-center space-x-2 bg-white bg-opacity-10 backdrop-blur-sm border border-white border-opacity-30 text-white font-semibold text-base px-8 py-4 rounded-full hover:bg-opacity-20 active:scale-95 transition-all duration-150"
             >
-              Our Services
+              <span>Our Services</span>
+              <ArrowRight size={18} />
             </a>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="col-span-1 md:col-span-2">
-              <div className="flex items-center space-x-2 mb-4">
-                <Building2 className="h-8 w-8 text-blue-400" />
-                <span className="text-2xl font-bold">{companyName}</span>
-              </div>
-              <p className="text-gray-400 mb-4">
-                {company?.description ||
-                  "Building Excellence in Rwanda. Premier construction company specializing in residential, commercial, and industrial projects with focus on quality, sustainability, and innovation."}
-              </p>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Services</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <a
-                    href="/services"
-                    className="hover:text-white transition-colors"
-                  >
-                    Construction
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/services"
-                    className="hover:text-white transition-colors"
-                  >
-                    Architecture
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/services"
-                    className="hover:text-white transition-colors"
-                  >
-                    Interior Design
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="/services"
-                    className="hover:text-white transition-colors"
-                  >
-                    Project Management
-                  </a>
-                </li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="text-lg font-semibold mb-4">Contact Info</h4>
-              <ul className="space-y-2 text-gray-400">
-                <li>{company?.address || "Kigali, Rwanda"}</li>
-                <li>{company?.phone || "+250 XXX XXX XXX"}</li>
-                <li>{company?.email || "info@masstech.rw"}</li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 {companyName}. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

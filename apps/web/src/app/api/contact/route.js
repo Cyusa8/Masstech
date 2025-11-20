@@ -1,79 +1,138 @@
-import sql from "@/app/api/utils/sql";
+import sql from "../utils/sql.js";
 
+// Get all contact inquiries (for admin)
+export async function GET(request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+
+    let query = "SELECT * FROM contact_inquiries";
+    let params = [];
+
+    if (status) {
+      query += " WHERE status = $1";
+      params = [status];
+    }
+
+    query += " ORDER BY created_at DESC";
+
+    const inquiries = await sql(query, params);
+
+    return Response.json({
+      success: true,
+      data: inquiries,
+    });
+  } catch (error) {
+    console.error("Error fetching contact inquiries:", error);
+    return Response.json(
+      { success: false, error: "Failed to fetch contact inquiries" },
+      { status: 500 },
+    );
+  }
+}
+
+// Create new contact inquiry
 export async function POST(request) {
   try {
-    const formData = await request.json();
+    const body = await request.json();
+    const {
+      name,
+      email,
+      phone,
+      subject,
+      message,
+      service_interest,
+      budget_range,
+      timeline,
+    } = body;
 
-    // Validate required fields
-    if (
-      !formData.firstName ||
-      !formData.lastName ||
-      !formData.email ||
-      !formData.message
-    ) {
+    if (!name || !email || !message) {
       return Response.json(
-        { error: "Missing required fields" },
+        { success: false, error: "Name, email, and message are required" },
         { status: 400 },
       );
     }
 
-    // Validate email format
+    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      return Response.json({ error: "Invalid email format" }, { status: 400 });
+    if (!emailRegex.test(email)) {
+      return Response.json(
+        { success: false, error: "Please provide a valid email address" },
+        { status: 400 },
+      );
     }
 
-    // Save the contact inquiry to the database
-    const inquiry = await sql`
+    const result = await sql`
       INSERT INTO contact_inquiries (
-        first_name,
-        last_name,
-        email,
-        phone,
-        service,
-        budget,
-        timeline,
-        message
+        name, email, phone, subject, message, service_interest, budget_range, timeline
       )
       VALUES (
-        ${formData.firstName},
-        ${formData.lastName},
-        ${formData.email},
-        ${formData.phone || null},
-        ${formData.service || null},
-        ${formData.budget || null},
-        ${formData.timeline || null},
-        ${formData.message}
+        ${name}, ${email}, ${phone}, ${subject}, ${message}, ${service_interest}, ${budget_range}, ${timeline}
       )
-      RETURNING id, created_at
+      RETURNING *
     `;
 
-    // Log the contact form submission for debugging (remove in production)
-    console.log("Contact Form Submission:", {
-      id: inquiry[0].id,
-      name: `${formData.firstName} ${formData.lastName}`,
-      email: formData.email,
-      created_at: inquiry[0].created_at,
+    return Response.json({
+      success: true,
+      message: "Thank you for your inquiry! We will get back to you soon.",
+      data: result[0],
     });
-
-    // In a real application, you would also:
-    // 1. Send an email notification to your team
-    // 2. Send a confirmation email to the customer
-    // 3. Integrate with a CRM system
-
-    return Response.json(
-      {
-        success: true,
-        message:
-          "Thank you for your inquiry! We will get back to you within 24 hours.",
-        inquiry_id: inquiry[0].id,
-      },
-      { status: 200 },
-    );
   } catch (error) {
-    console.error("Contact form error:", error);
+    console.error("Error creating contact inquiry:", error);
     return Response.json(
-      { error: "Internal server error. Please try again later." },
+      { success: false, error: "Failed to submit inquiry. Please try again." },
+      { status: 500 },
+    );
+  }
+}
+
+// Update contact inquiry status
+export async function PUT(request) {
+  try {
+    const body = await request.json();
+    const { id, status } = body;
+
+    if (!id || !status) {
+      return Response.json(
+        { success: false, error: "Contact inquiry ID and status are required" },
+        { status: 400 },
+      );
+    }
+
+    const validStatuses = ["new", "contacted", "responded", "closed"];
+    if (!validStatuses.includes(status)) {
+      return Response.json(
+        {
+          success: false,
+          error:
+            "Invalid status. Must be one of: new, contacted, responded, closed",
+        },
+        { status: 400 },
+      );
+    }
+
+    const result = await sql`
+      UPDATE contact_inquiries 
+      SET status = ${status}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ${id} 
+      RETURNING *
+    `;
+
+    if (result.length === 0) {
+      return Response.json(
+        { success: false, error: "Contact inquiry not found" },
+        { status: 404 },
+      );
+    }
+
+    return Response.json({
+      success: true,
+      data: result[0],
+    });
+  } catch (error) {
+    console.error("Error updating contact inquiry:", error);
+    return Response.json(
+      { success: false, error: "Failed to update contact inquiry" },
       { status: 500 },
     );
   }
