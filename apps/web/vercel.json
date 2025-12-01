@@ -1,5 +1,4 @@
 {
-  "version": 2,
   "buildCommand": "bun run build",
   "outputDirectory": ".react-router/client",
   "installCommand": "bun install",
@@ -9,12 +8,6 @@
       "source": "/(.*)",
       "destination": "/api/server"
     }
-  ],
-  "functions": {
-    "api/server.js": {
-      "runtime": "nodejs20.x",
-      "includeFiles": ".react-router/server/**"
-    }
-  }
+  ]
 }
 
