@@ -8,8 +8,28 @@ import updatedFetch from '../src/__create/fetch';
 const API_BASENAME = '/api';
 const api = new Hono();
 
-// Get current directory
-const __dirname = join(fileURLToPath(new URL('.', import.meta.url)), '../src/app/api');
+// Get current directory - handle both dev and production builds
+const getApiDir = () => {
+  // Always use process.cwd() as the base - it points to the project root
+  // In Vercel builds, this is the project root where src/ exists
+  const projectRoot = process.cwd();
+  const apiPath = join(projectRoot, 'src/app/api');
+  
+  // In development, we can also try relative path as fallback
+  if (import.meta.env.DEV) {
+    try {
+      const currentDir = fileURLToPath(new URL('.', import.meta.url));
+      const devPath = join(currentDir, '../src/app/api');
+      return devPath;
+    } catch {
+      // Fallback to project root
+    }
+  }
+  
+  return apiPath;
+};
+
+const __dirname = getApiDir();
 if (globalThis.fetch) {
   globalThis.fetch = updatedFetch;
 }
@@ -65,8 +85,16 @@ function getHonoPath(routeFile: string): { name: string; pattern: string }[] {
 
 // Import and register all routes
 async function registerRoutes() {
+  // In production, if file system access fails, we'll skip dynamic route registration
+  // Routes should be statically imported or registered elsewhere
   const routeFiles = (
     await findRouteFiles(__dirname).catch((error) => {
+      // In production builds, source files may not be available
+      // This is expected and routes should be registered statically
+      if (!import.meta.env.DEV) {
+        console.warn('Route files not found in production build (this may be expected):', error.message);
+        return [];
+      }
       console.error('Error finding route files:', error);
       return [];
     })
