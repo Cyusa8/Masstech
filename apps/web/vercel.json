@@ -1,6 +1,6 @@
 {
   "buildCommand": "bun run build",
-  "outputDirectory": ".react-router/client",
+  "outputDirectory": "build/client",
   "installCommand": "bun install",
   "framework": null,
   "rewrites": [
